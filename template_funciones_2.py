@@ -130,7 +130,7 @@ def metpotI2(A,mu,tol=1e-8,maxrep=np.inf):
    # suponiendo que sus autovalores son positivos excepto por el menor que es igual a 0
    # Retorna el segundo autovector, su autovalor, y si el metodo llegó a converger.
    X = A + mu* np.eye(A.shape[0]) # Calculamos la matriz A shifteada en mu
-   iX = calcularInversaConLU(X) # La invertimos #NOOOO, HAY QUE USAR LU
+   iX = calcularInversaConLU(X) # La invertimos
    defliX = deflaciona(iX) # La deflacionamos
    v,l,_ =  metpot1(defliX) # Buscamos su segundo autovector
    l = 1/l # Reobtenemos el autovalor correcto

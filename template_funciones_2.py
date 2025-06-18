@@ -2,6 +2,7 @@ import numpy as np
 import scipy
 
 from template_funciones import *
+
 # Matriz A de ejemplo
 A_ejemplo = np.array([
     [0, 1, 1, 1, 0, 0, 0, 0],
@@ -80,10 +81,15 @@ def calcularInversaConLU(A):
 
     return Inv
 
-def metpot1(A,tol=1e-8,maxrep=np.inf):
+def metpot1(A,tol=1e-8,maxrep=np.inf, seed=None):
    # Recibe una matriz A y calcula su autovalor de mayor módulo, con un error relativo menor a tol y-o haciendo como mucho maxrep repeticiones
-   np.random.seed(12) #Garantizo que sea deterministica la aleatoriedad
-   
+   # seed argumento opcional, si no es None, toma seed como semilla. Sirve para garantizar determinismo en caso de que se requiera.
+   if not seed is None:
+      np.random.seed(seed) #Garantizo que sea deterministica la aleatoriedad
+   if seed is None:
+       print("AAAAA")
+
+    
    v = np.random.uniform(-1, 1, size=A.shape[0]).reshape(-1, 1) # Generamos un vector de partida aleatorio, entre -1 y 1
    v = v / np.linalg.norm(v) # Lo normalizamos
    v1 = A@v # Aplicamos la matriz una vez
@@ -103,42 +109,42 @@ def metpot1(A,tol=1e-8,maxrep=np.inf):
    l = (v1.T @ A @ v1)/ (v1.T @ v1) # Calculamos el autovalor
    return v1,l,nrep<maxrep
 
-def deflaciona(A,tol=1e-8,maxrep=np.inf):
+def deflaciona(A,tol=1e-8,maxrep=np.inf, seed=None):
     # Recibe la matriz A, una tolerancia para el método de la potencia, y un número máximo de repeticiones
-    v1,l1,_ = metpot1(A,tol,maxrep) # Buscamos primer autovector con método de la potencia
+    v1,l1,_ = metpot1(A,tol,maxrep, seed=seed) # Buscamos primer autovector con método de la potencia
     deflA = A - l1*(np.outer(v1, v1)) # Sugerencia, usar la funcion outer de numpy
     return deflA
 
-def metpot2(A,v1,l1,tol=1e-8,maxrep=np.inf):
+def metpot2(A,v1,l1,tol=1e-8,maxrep=np.inf, seed=None):
    # La funcion aplica el metodo de la potencia para buscar el segundo autovalor de A, suponiendo que sus autovectores son ortogonales
    # v1 y l1 son los primeors autovectores y autovalores de A}
    # Have fun!
-   deflA = deflaciona(A)
-   return metpot1(deflA,tol,maxrep)
+   deflA = deflaciona(A, seed=seed)
+   return metpot1(deflA,tol,maxrep, seed=seed)
 
 
-def metpotI(A,mu,tol=1e-8,maxrep=np.inf):
+def metpotI(A,mu,tol=1e-8,maxrep=np.inf, seed=None):
 
     # Retorna el primer autovalor de la inversa de A + mu * I, junto a su autovector y si el método convergió.
 
     AmuI = calcularInversaConLU(A + mu* np.eye(A.shape[0]))
 
-    return metpot1(AmuI,tol=tol,maxrep=maxrep)
+    return metpot1(AmuI,tol=tol,maxrep=maxrep, seed=seed)
 
-def metpotI2(A,mu,tol=1e-8,maxrep=np.inf):
+def metpotI2(A,mu,tol=1e-8,maxrep=np.inf, seed=None):
    # Recibe la matriz A, y un valor mu y retorna el segundo autovalor y autovector de la matriz A, 
    # suponiendo que sus autovalores son positivos excepto por el menor que es igual a 0
    # Retorna el segundo autovector, su autovalor, y si el metodo llegó a converger.
    X = A + mu* np.eye(A.shape[0]) # Calculamos la matriz A shifteada en mu
    iX = calcularInversaConLU(X) # La invertimos
-   defliX = deflaciona(iX) # La deflacionamos
-   v,l,_ =  metpot1(defliX) # Buscamos su segundo autovector
+   defliX = deflaciona(iX, seed=seed) # La deflacionamos
+   v,l,_ =  metpot1(defliX, seed=seed) # Buscamos su segundo autovector
    l = 1/l # Reobtenemos el autovalor correcto
    l -= mu
    return v,l,_
 
 
-def laplaciano_iterativo(A,niveles,nombres_s=None):
+def laplaciano_iterativo(A,niveles,nombres_s=None, seed=None):
     # Recibe una matriz A, una cantidad de niveles sobre los que hacer cortes, y los nombres de los nodos
     # Retorna una lista con conjuntos de nodos representando las comunidades.
     # La función debe, recursivamente, ir realizando cortes y reduciendo en 1 el número de niveles hasta llegar a 0 y retornar.
@@ -148,7 +154,7 @@ def laplaciano_iterativo(A,niveles,nombres_s=None):
         return([nombres_s])
     else: # Sino:
         L = calcula_L(A) # Recalculamos el L
-        v,l,_ = metpotI2(L, 7) # Encontramos el segundo autovector de L
+        v,l,_ = metpotI2(L, 7, seed=seed) # Encontramos el segundo autovector de L
         # Recortamos A en dos partes, la que está asociada a el signo positivo de v y la que está asociada al negativo
         # Obtenemos los indices para los cuales el autovector v tiene signo positivo y negativo.
         s = calcular_S(v)
@@ -170,13 +176,15 @@ def laplaciano_iterativo(A,niveles,nombres_s=None):
         
         return(
                 laplaciano_iterativo(Ap,niveles-1,
-                                     nombres_s=[ni for ni,vi in zip(nombres_s,v) if vi>0]) +
+                                     nombres_s=[ni for ni,vi in zip(nombres_s,v) if vi>0],
+                                     seed=seed) +
                 laplaciano_iterativo(Am,niveles-1,
-                                     nombres_s=[ni for ni,vi in zip(nombres_s,v) if vi<0])
+                                     nombres_s=[ni for ni,vi in zip(nombres_s,v) if vi<0],
+                                     seed=seed)
                 )        
 
 
-def modularidad_iterativo(A=None,R=None,nombres_s=None):
+def modularidad_iterativo(A=None,R=None,nombres_s=None, seed=None):
     # Recibe una matriz A, una matriz R de modularidad, y los nombres de los nodos
     # Retorna una lista con conjuntos de nodos representando las comunidades.
 
@@ -191,7 +199,7 @@ def modularidad_iterativo(A=None,R=None,nombres_s=None):
     if R.shape[0] == 1: # Si llegamos al último nivel
         return([nombres_s])
     else:
-        v,l,_ = metpot1(R) # Primer autovector y autovalor de R
+        v,l,_ = metpot1(R, seed=seed) # Primer autovector y autovalor de R
         v = v.flatten()
         
         # Modularidad Actual:
@@ -210,8 +218,8 @@ def modularidad_iterativo(A=None,R=None,nombres_s=None):
             Rp = R[np.ix_(indices_signo_positivo, indices_signo_positivo)] # Parte de R asociada a los valores positivos de v
             Rm = R[np.ix_(indices_signo_negativo, indices_signo_negativo)] # Parte asociada a los valores negativos de v
         
-            vp,lp,_ = metpot1(Rp)  # autovector principal de Rp
-            vm,lm,_ = metpot1(Rm) # autovector principal de Rm
+            vp,lp,_ = metpot1(Rp, seed=seed)  # autovector principal de Rp
+            vm,lm,_ = metpot1(Rm, seed=seed) # autovector principal de Rm
             
             vp = vp.flatten()
             vm = vm.flatten()
@@ -228,9 +236,11 @@ def modularidad_iterativo(A=None,R=None,nombres_s=None):
                 # Sino, repetimos para los subniveles
                 return(
                     modularidad_iterativo(A,Rp,
-                                     nombres_s=[ni for ni,vi in zip(nombres_s,v) if vi>0]) +
+                                     nombres_s=[ni for ni,vi in zip(nombres_s,v) if vi>0],
+                                     seed=seed) +
                     modularidad_iterativo(A,Rm,
-                                     nombres_s=[ni for ni,vi in zip(nombres_s,v) if vi<0])
+                                     nombres_s=[ni for ni,vi in zip(nombres_s,v) if vi<0],
+                                     seed=seed)
                 )
 
 

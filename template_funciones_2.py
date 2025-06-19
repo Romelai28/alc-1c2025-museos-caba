@@ -86,9 +86,6 @@ def metpot1(A,tol=1e-8,maxrep=np.inf, seed=None):
    # seed argumento opcional, si no es None, toma seed como semilla. Sirve para garantizar determinismo en caso de que se requiera.
    if not seed is None:
       np.random.seed(seed) #Garantizo que sea deterministica la aleatoriedad
-   if seed is None:
-       print("AAAAA")
-
     
    v = np.random.uniform(-1, 1, size=A.shape[0]).reshape(-1, 1) # Generamos un vector de partida aleatorio, entre -1 y 1
    v = v / np.linalg.norm(v) # Lo normalizamos
